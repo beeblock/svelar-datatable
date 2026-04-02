@@ -24,7 +24,7 @@
     "./ui": "./src/ui/index.ts",
     "./ui/*": "./src/ui/*"
   },
-  "files": ["dist", "src/ui", "LICENSE"],
+  "files": ["dist", "src/ui", "src/publishable", "LICENSE"],
   "scripts": {
     "build": "tsup && (tsc --emitDeclarationOnly || echo 'Warning: tsc declaration emit had errors')",
     "dev": "tsup --watch"

@@ -23,10 +23,15 @@ Full-featured DataTable plugin for [Svelar](https://svelar.dev) / SvelteKit 2 wi
 - **Footer aggregation** — per-column footer with custom functions
 - **Responsive** — horizontal scroll for small screens
 
-## Install
+## Installation
 
 ```bash
+# Install and publish route stubs
+npx svelar plugin:install @beeblock/svelar-datatable
+
+# Or manual install
 npm install @beeblock/svelar-datatable
+npx svelar plugin:publish @beeblock/svelar-datatable
 ```
 
 Peer dependencies: `@beeblock/svelar >= 0.4.0`, `svelte ^5.0.0`
