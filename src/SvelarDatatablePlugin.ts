@@ -1,5 +1,3 @@
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
 import type { DataTableConfig } from './types.js';
 
 interface DatatablePluginConfig {
@@ -46,7 +44,9 @@ export class SvelarDatatablePlugin {
     return { ...defaultConfig.defaults } as Partial<DataTableConfig>;
   }
 
-  publishables() {
+  async publishables() {
+    const { fileURLToPath } = await import('node:url');
+    const { dirname, join } = await import('node:path');
     const base = dirname(fileURLToPath(import.meta.url));
     return {
       routes: [

@@ -1,4 +1,3 @@
-export { SvelarDatatablePlugin } from './SvelarDatatablePlugin.js';
 export { DataTableStore } from './state/DataTableStore.js';
 export { ServerDataTableStore } from './state/ServerDataTableStore.js';
 export { ExportManager } from './export/ExportManager.js';

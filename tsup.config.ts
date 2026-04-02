@@ -19,6 +19,8 @@ export default defineConfig({
     'svelte',
     'svelte/*',
     '@sveltejs/kit',
+    'node:url',
+    'node:path',
     'exceljs',
     'zod',
   ],
