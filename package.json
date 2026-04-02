@@ -1,9 +1,15 @@
 {
   "name": "@beeblock/svelar-datatable",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Full-featured DataTable plugin for Svelar — sorting, searching, pagination, inline editing, export, and server-side processing",
   "type": "module",
-  "keywords": ["svelar-plugin", "datatable", "svelte", "sveltekit", "data-grid"],
+  "keywords": [
+    "svelar-plugin",
+    "datatable",
+    "svelte",
+    "sveltekit",
+    "data-grid"
+  ],
   "license": "MIT",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -24,7 +30,12 @@
     "./ui": "./src/ui/index.ts",
     "./ui/*": "./src/ui/*"
   },
-  "files": ["dist", "src/ui", "src/publishable", "LICENSE"],
+  "files": [
+    "dist",
+    "src/ui",
+    "src/publishable",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsup && (tsc --emitDeclarationOnly || echo 'Warning: tsc declaration emit had errors')",
     "dev": "tsup --watch"
@@ -34,8 +45,12 @@
     "svelte": "^5.0.0"
   },
   "peerDependenciesMeta": {
-    "exceljs": { "optional": true },
-    "@beeblock/svelar": { "optional": false }
+    "exceljs": {
+      "optional": true
+    },
+    "@beeblock/svelar": {
+      "optional": false
+    }
   },
   "devDependencies": {
     "tsup": "^8.5.0",
