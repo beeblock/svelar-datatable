@@ -149,6 +149,10 @@
         if (row) await onEdit(row, formData);
       }
       store.closeEditor();
+      // Auto-refetch for server-side stores after successful edit/create
+      if ('initialFetch' in store) {
+        await (store as any).initialFetch();
+      }
     } catch (err: any) {
       if (err.errors) {
         store.setValidationErrors(err.errors);
