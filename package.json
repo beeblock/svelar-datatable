@@ -45,6 +45,10 @@
   "files": [
     "dist",
     "src/ui",
+    "src/state",
+    "src/export",
+    "src/types.ts",
+    "src/index.ts",
     "src/publishable",
     "LICENSE"
   ],
