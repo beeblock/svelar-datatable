@@ -1,6 +1,6 @@
 {
   "name": "@beeblock/svelar-datatable",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Full-featured DataTable plugin for Svelar — sorting, searching, pagination, inline editing, export, and server-side processing",
   "type": "module",
   "keywords": [
