@@ -13,6 +13,7 @@
   "license": "MIT",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "svelte": "./src/ui/index.ts",
   "exports": {
     "./package.json": "./package.json",
     ".": {
@@ -27,8 +28,15 @@
       "types": "./dist/types.d.ts",
       "default": "./dist/types.js"
     },
-    "./ui": "./src/ui/index.ts",
-    "./ui/*": "./src/ui/*"
+    "./ui": {
+      "types": "./src/ui/index.ts",
+      "svelte": "./src/ui/index.ts",
+      "import": "./src/ui/index.ts"
+    },
+    "./ui/*": {
+      "svelte": "./src/ui/*",
+      "import": "./src/ui/*"
+    }
   },
   "files": [
     "dist",
