@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { ColumnDef, DataTableStore, SelectionMode, EditorMode, DataTableClassNames } from '../index.js';
+  import type { ColumnDef, DataTableStore, SelectionMode, EditorMode, DataTableClassNames } from '../index.ts';
   import type { Snippet } from 'svelte';
   import DataTableRow from './DataTableRow.svelte';
   import DataTableLoading from './DataTableLoading.svelte';

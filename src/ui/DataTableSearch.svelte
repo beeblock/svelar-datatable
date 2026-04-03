@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { DataTableStore } from '../index.js';
+  import type { DataTableStore } from '../index.ts';
 
   interface Props {
     store: DataTableStore;

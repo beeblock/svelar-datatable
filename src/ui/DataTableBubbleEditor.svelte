@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { EditorFieldDef, DataTableStore, DataTableClassNames } from '../index.js';
+  import type { EditorFieldDef, DataTableStore, DataTableClassNames } from '../index.ts';
   import DataTableEditorForm from './DataTableEditorForm.svelte';
   import { tick } from 'svelte';
 

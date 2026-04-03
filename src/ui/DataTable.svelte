@@ -1,8 +1,8 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import type { DataTableConfig, DataTableClassNames, ColumnDef, EditorFieldDef } from '../types.js';
-  import { DataTableStore } from '../state/DataTableStore.js';
-  import { ServerDataTableStore } from '../state/ServerDataTableStore.js';
+  import type { DataTableConfig, DataTableClassNames, ColumnDef, EditorFieldDef } from '../types.ts';
+  import { DataTableStore } from '../state/DataTableStore.ts';
+  import { ServerDataTableStore } from '../state/ServerDataTableStore.ts';
   import DataTableToolbar from './DataTableToolbar.svelte';
   import DataTableHead from './DataTableHead.svelte';
   import DataTableBody from './DataTableBody.svelte';

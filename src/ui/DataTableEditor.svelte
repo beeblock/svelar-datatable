@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { EditorFieldDef, DataTableStore, DataTableClassNames } from '../index.js';
+  import type { EditorFieldDef, DataTableStore, DataTableClassNames } from '../index.ts';
   import DataTableModalEditor from './DataTableModalEditor.svelte';
   import DataTableBubbleEditor from './DataTableBubbleEditor.svelte';
 

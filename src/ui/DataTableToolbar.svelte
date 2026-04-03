@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { ColumnDef, ButtonDef, ExportFormat, DataTableStore, EditorMode, DataTableClassNames } from '../index.js';
+  import type { ColumnDef, ButtonDef, ExportFormat, DataTableStore, EditorMode, DataTableClassNames } from '../index.ts';
   import DataTableSearch from './DataTableSearch.svelte';
   import DataTableColumnToggle from './DataTableColumnToggle.svelte';
   import DataTableButtons from './DataTableButtons.svelte';

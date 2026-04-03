@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { ColumnDef, DataTableStore, SelectionMode, DataTableClassNames } from '../index.js';
+  import type { ColumnDef, DataTableStore, SelectionMode, DataTableClassNames } from '../index.ts';
 
   interface Props {
     columns: ColumnDef[];

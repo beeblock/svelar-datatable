@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { EditorFieldDef, DataTableStore } from '../index.js';
+  import type { EditorFieldDef, DataTableStore } from '../index.ts';
 
   interface Props {
     field: EditorFieldDef;

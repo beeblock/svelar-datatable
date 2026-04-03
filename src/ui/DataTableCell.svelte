@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { ColumnDef, DataTableStore } from '../index.js';
+  import type { ColumnDef, DataTableStore } from '../index.ts';
   import type { Snippet } from 'svelte';
 
   interface Props {

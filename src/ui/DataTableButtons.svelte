@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { ButtonDef, ExportFormat, DataTableStore, ColumnDef } from '../index.js';
-  import { ExportManager } from '../export/ExportManager.js';
+  import type { ButtonDef, ExportFormat, DataTableStore, ColumnDef } from '../index.ts';
+  import { ExportManager } from '../export/ExportManager.ts';
 
   interface Props {
     buttons: (ButtonDef | ExportFormat)[];
