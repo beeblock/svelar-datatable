@@ -3,10 +3,6 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import type { DataTableConfig } from './types.js';
 
-const distDir = dirname(fileURLToPath(import.meta.url));
-const packageRoot = dirname(distDir);
-const pub = join(packageRoot, 'src', 'publishable');
-
 interface DatatablePluginConfig {
   prefix?: string;
   defaults?: Partial<DataTableConfig>;
@@ -32,9 +28,13 @@ const defaultConfig: DatatablePluginConfig = {
   },
 };
 
+const distDir = dirname(fileURLToPath(import.meta.url));
+const packageRoot = dirname(distDir);
+const pub = join(packageRoot, 'src', 'publishable');
+
 export class SvelarDatatablePlugin extends Plugin {
   readonly name = 'svelar-datatable';
-  readonly version = '0.1.2';
+  readonly version = '0.1.4';
   readonly description = 'Full-featured DataTable plugin for Svelar — sorting, searching, pagination, inline editing, export, and server-side processing';
 
   private _config: DatatablePluginConfig;

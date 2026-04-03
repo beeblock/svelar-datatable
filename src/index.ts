@@ -1,9 +1,3 @@
-import { SvelarDatatablePlugin } from './SvelarDatatablePlugin.js';
-
-// Default export for plugin system discovery
-export default SvelarDatatablePlugin;
-
-export { SvelarDatatablePlugin } from './SvelarDatatablePlugin.js';
 export { DataTableStore } from './state/DataTableStore.js';
 export { ServerDataTableStore } from './state/ServerDataTableStore.js';
 export { ExportManager } from './export/ExportManager.js';
