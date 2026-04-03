@@ -1,4 +1,11 @@
+import { Plugin } from '@beeblock/svelar/plugins';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import type { DataTableConfig } from './types.js';
+
+const distDir = dirname(fileURLToPath(import.meta.url));
+const packageRoot = dirname(distDir);
+const pub = join(packageRoot, 'src', 'publishable');
 
 interface DatatablePluginConfig {
   prefix?: string;
@@ -25,18 +32,19 @@ const defaultConfig: DatatablePluginConfig = {
   },
 };
 
-export class SvelarDatatablePlugin {
+export class SvelarDatatablePlugin extends Plugin {
+  readonly name = 'svelar-datatable';
+  readonly version = '0.1.2';
+  readonly description = 'Full-featured DataTable plugin for Svelar — sorting, searching, pagination, inline editing, export, and server-side processing';
+
   private _config: DatatablePluginConfig;
 
   constructor(config: DatatablePluginConfig = {}) {
+    super();
     this._config = { ...defaultConfig, ...config, defaults: { ...defaultConfig.defaults, ...config.defaults } };
   }
 
-  get name() {
-    return 'svelar-datatable';
-  }
-
-  get config() {
+  get datatableConfig() {
     return this._config;
   }
 
@@ -44,13 +52,10 @@ export class SvelarDatatablePlugin {
     return { ...defaultConfig.defaults } as Partial<DataTableConfig>;
   }
 
-  async publishables() {
-    const { fileURLToPath } = await import('node:url');
-    const { dirname, join } = await import('node:path');
-    const base = dirname(fileURLToPath(import.meta.url));
+  publishables() {
     return {
       routes: [
-        { source: join(base, 'publishable/routes/datatable.ts'), dest: 'src/routes/api/datatable/+server.ts', type: 'asset' as const },
+        { source: join(pub, 'routes/datatable.ts'), dest: 'src/routes/api/datatable/+server.ts', type: 'asset' as const },
       ],
     };
   }

@@ -9,22 +9,20 @@ import type { RequestHandler } from './$types';
 //
 // import { User } from '$lib/models/User';
 //
-// export const GET: RequestHandler = (event) =>
-//   DataTableController.handle(event, User, {
-//     searchable: ['name', 'email'],
-//     sortable: ['name', 'email', 'created_at'],
-//   });
+// const ctrl = new DataTableController(User, {
+//   searchable: ['name', 'email'],
+//   orderable: ['name', 'email', 'created_at'],
+// });
 //
-// POST is also supported for complex filter payloads:
-// export const POST: RequestHandler = (event) =>
-//   DataTableController.handle(event, User);
+// export const GET: RequestHandler = ctrl.handle('query');
+// export const POST: RequestHandler = ctrl.handle('query');
 
 export const GET: RequestHandler = (event) => {
   // TODO: replace with your model and options
-  throw new Error('Configure your model in this route before using DataTableController.handle()');
+  throw new Error('Configure your model in this route before using DataTableController');
 };
 
 export const POST: RequestHandler = (event) => {
   // TODO: replace with your model and options
-  throw new Error('Configure your model in this route before using DataTableController.handle()');
+  throw new Error('Configure your model in this route before using DataTableController');
 };

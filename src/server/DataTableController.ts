@@ -1,15 +1,21 @@
+import { Controller } from '@beeblock/svelar/routing';
 import type { DataTableResponse } from '../types.js';
 import { DataTableService, type DataTableServiceOptions } from './DataTableService.js';
 import { parseDataTableRequest, parseDataTableRequestFromBody } from './DataTableRequest.js';
 
-export class DataTableController {
-  static async handle(
-    event: any,
-    model: any,
-    options?: DataTableServiceOptions,
-  ): Promise<Response> {
+export class DataTableController extends Controller {
+  private _model: any;
+  private _options?: DataTableServiceOptions;
+
+  constructor(model: any, options?: DataTableServiceOptions) {
+    super();
+    this._model = model;
+    this._options = options;
+  }
+
+  async query(event: any): Promise<Response> {
     try {
-      const service = new DataTableService(model, options);
+      const service = new DataTableService(this._model, this._options);
       let request;
 
       if (event.request.method === 'POST') {
@@ -19,11 +25,7 @@ export class DataTableController {
       }
 
       const response = await service.process(request);
-
-      return new Response(JSON.stringify(response), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return this.json(response);
     } catch (err: any) {
       const errorResponse: DataTableResponse = {
         draw: 0,
@@ -32,10 +34,7 @@ export class DataTableController {
         data: [],
         error: err.message ?? 'Internal server error',
       };
-      return new Response(JSON.stringify(errorResponse), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return this.json(errorResponse, 500);
     }
   }
 }
