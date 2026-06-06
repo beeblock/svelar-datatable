@@ -12,6 +12,8 @@
   }
   let { fields, store, anchorEl = null, classNames = {}, onsubmit }: Props = $props();
 
+  // svelte-ignore state_referenced_locally
+
   let state = $state(store.getState());
   $effect(() => {
     return store.subscribe(() => {
@@ -57,6 +59,7 @@
 
 {#if isOpen}
   <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
   <div class="sdt-bubble-backdrop" onclick={close}></div>
   <div class="sdt-bubble-editor" style={popoverStyle}>
     <DataTableEditorForm

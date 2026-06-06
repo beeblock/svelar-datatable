@@ -8,6 +8,7 @@
   let { store, columns }: Props = $props();
 
   let open = $state(false);
+  // svelte-ignore state_referenced_locally
   let state = $state(store.getState());
 
   $effect(() => {

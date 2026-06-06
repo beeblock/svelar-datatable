@@ -8,6 +8,8 @@
   }
   let { store, perPageOptions = [10, 15, 25, 50, 100], classNames = {} }: Props = $props();
 
+  // svelte-ignore state_referenced_locally
+
   let state = $state(store.getState());
   $effect(() => {
     return store.subscribe(() => {

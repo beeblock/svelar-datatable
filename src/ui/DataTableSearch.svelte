@@ -9,6 +9,8 @@
   }
   let { store, debounceMs = 300, placeholder = 'Search...', searchInputClass = '' }: Props = $props();
 
+  // svelte-ignore state_referenced_locally
+
   let inputValue = $state(store.getState().globalSearch);
   let timer: ReturnType<typeof setTimeout> | null = null;
 

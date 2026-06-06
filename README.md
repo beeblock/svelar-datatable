@@ -34,7 +34,7 @@ npm install @beeblock/svelar-datatable
 npx svelar plugin:publish @beeblock/svelar-datatable
 ```
 
-Peer dependencies: `@beeblock/svelar >= 0.4.0`, `svelte ^5.0.0`
+Peer dependencies: `@beeblock/svelar >= 0.6.7`, `svelte ^5.0.0`. `exceljs` is an optional peer dependency used only for Excel export.
 
 ## Quick Start
 
@@ -75,13 +75,24 @@ Peer dependencies: `@beeblock/svelar >= 0.4.0`, `svelte ^5.0.0`
 ```ts
 // src/routes/api/datatable/users/+server.ts
 import { DataTableController } from '@beeblock/svelar-datatable/server';
-import { User } from '$lib/models/User';
+import { User } from '$lib/modules/auth/domain/models/User.js';
 
 const dt = new DataTableController(User);
-export const GET = dt.handle();
+export const GET = dt.handle('query');
+export const POST = dt.handle('query');
 ```
 
 The server controller handles pagination, sorting, searching, and filtering — compatible with the jQuery DataTables wire protocol.
+
+## Plugin Contract
+
+The package exposes the required Svelar plugin entry at `@beeblock/svelar-datatable/plugin`.
+
+```ts
+import DatatablePlugin from '@beeblock/svelar-datatable/plugin';
+```
+
+The plugin publishes a route stub to `src/routes/api/datatable/+server.ts` and registers default config under the `datatable` config key.
 
 ## Editing
 
@@ -148,6 +159,14 @@ import { DataTableController, DataTableService } from '@beeblock/svelar-datatabl
 ## Documentation
 
 Full documentation with all props, callbacks, store API, and examples: [svelar.dev/docs/datatable](https://svelar.dev/docs/datatable)
+
+## Local Validation
+
+```bash
+npm run lint
+npm run test
+npm run build
+```
 
 ## License
 

@@ -1,9 +1,19 @@
 import type { DataTableRequest } from '../types.js';
 
+function integerParam(value: string | null, fallback: number, min = 0): number {
+  const parsed = Number.parseInt(value ?? '', 10);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(min, parsed);
+}
+
+function sortDirection(value: string | null): 'asc' | 'desc' {
+  return value === 'desc' ? 'desc' : 'asc';
+}
+
 export function parseDataTableRequest(params: URLSearchParams): DataTableRequest {
-  const draw = parseInt(params.get('draw') ?? '1', 10);
-  const start = parseInt(params.get('start') ?? '0', 10);
-  const length = parseInt(params.get('length') ?? '15', 10);
+  const draw = integerParam(params.get('draw'), 1, 1);
+  const start = integerParam(params.get('start'), 0, 0);
+  const length = integerParam(params.get('length'), 15, 1);
 
   const search = {
     value: params.get('search[value]') ?? '',
@@ -14,8 +24,8 @@ export function parseDataTableRequest(params: URLSearchParams): DataTableRequest
   let orderIdx = 0;
   while (params.has(`order[${orderIdx}][column]`)) {
     order.push({
-      column: parseInt(params.get(`order[${orderIdx}][column]`) ?? '0', 10),
-      dir: (params.get(`order[${orderIdx}][dir]`) ?? 'asc') as 'asc' | 'desc',
+      column: integerParam(params.get(`order[${orderIdx}][column]`), 0, 0),
+      dir: sortDirection(params.get(`order[${orderIdx}][dir]`)),
     });
     orderIdx++;
   }

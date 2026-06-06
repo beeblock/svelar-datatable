@@ -52,6 +52,8 @@
     containerHeight = 500,
   }: Props = $props();
 
+  // svelte-ignore state_referenced_locally
+
   let state = $state(store.getState());
   $effect(() => {
     return store.subscribe(() => {

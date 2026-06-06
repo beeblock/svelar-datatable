@@ -93,6 +93,7 @@
   });
 
   // Create store
+  // svelte-ignore state_referenced_locally
   let store: DataTableStore = $state(
     serverUrl
       ? new ServerDataTableStore(config)
@@ -103,6 +104,8 @@
   $effect(() => {
     storeRef = store;
   });
+
+  // svelte-ignore state_referenced_locally
 
   let state = $state(store.getState());
 

@@ -2,11 +2,15 @@ import { Plugin } from '@beeblock/svelar/plugins';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import type { DataTableConfig } from './types.js';
+import type { Container } from '@beeblock/svelar/container';
 
 interface DatatablePluginConfig {
   prefix?: string;
   defaults?: Partial<DataTableConfig>;
 }
+
+export const SVELAR_DATATABLE_PACKAGE = '@beeblock/svelar-datatable';
+export const SVELAR_DATATABLE_VERSION = '0.1.9';
 
 const defaultConfig: DatatablePluginConfig = {
   prefix: '/api',
@@ -33,8 +37,8 @@ const packageRoot = dirname(distDir);
 const pub = join(packageRoot, 'src', 'publishable');
 
 export class SvelarDatatablePlugin extends Plugin {
-  readonly name = 'svelar-datatable';
-  readonly version = '0.1.4';
+  readonly name = SVELAR_DATATABLE_PACKAGE;
+  readonly version = SVELAR_DATATABLE_VERSION;
   readonly description = 'Full-featured DataTable plugin for Svelar — sorting, searching, pagination, inline editing, export, and server-side processing';
 
   private _config: DatatablePluginConfig;
@@ -50,6 +54,21 @@ export class SvelarDatatablePlugin extends Plugin {
 
   static defaults(): Partial<DataTableConfig> {
     return { ...defaultConfig.defaults } as Partial<DataTableConfig>;
+  }
+
+  config() {
+    return {
+      key: 'datatable',
+      defaults: {
+        prefix: this._config.prefix,
+        defaults: { ...this._config.defaults },
+      },
+    };
+  }
+
+  async register(app: Container): Promise<void> {
+    app.instance('datatable.config', this.datatableConfig);
+    app.instance(`${SVELAR_DATATABLE_PACKAGE}.config`, this.datatableConfig);
   }
 
   publishables() {

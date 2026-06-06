@@ -10,6 +10,8 @@
   }
   let { columns, store, selectable = 'none', expandable = false, classNames = {} }: Props = $props();
 
+  // svelte-ignore state_referenced_locally
+
   let state = $state(store.getState());
   $effect(() => {
     return store.subscribe(() => {
