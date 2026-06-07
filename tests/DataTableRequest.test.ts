@@ -67,4 +67,20 @@ describe('parseDataTableRequest', () => {
     expect(request.length).toBe(1);
     expect(request.order).toEqual([{ column: 0, dir: 'asc' }]);
   });
+
+  it('parses custom server filters', () => {
+    const params = new URLSearchParams({
+      draw: '1',
+      start: '0',
+      length: '10',
+      'columns[0][data]': 'name',
+      'filters[role]': 'admin',
+      'filters[priority]': 'urgent',
+    });
+
+    expect(parseDataTableRequest(params).customFilters).toEqual({
+      role: 'admin',
+      priority: 'urgent',
+    });
+  });
 });

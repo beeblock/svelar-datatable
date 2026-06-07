@@ -11,6 +11,7 @@ function getCsrfToken(cookieName = 'XSRF-TOKEN'): string | null {
 export class ServerDataTableStore<T = any> extends DataTableStore<T> {
   private _serverUrl: string;
   private _serverMethod: 'GET' | 'POST';
+  private _serverParams?: Record<string, any> | (() => Record<string, any>);
   private _drawCounter = 0;
   private _abortController: AbortController | null = null;
   private _fetchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -22,6 +23,7 @@ export class ServerDataTableStore<T = any> extends DataTableStore<T> {
     super(config);
     this._serverUrl = config.serverUrl!;
     this._serverMethod = config.serverMethod ?? 'GET';
+    this._serverParams = config.serverParams;
     this._csrfCookieName = config.csrfCookieName ?? 'XSRF-TOKEN';
     this._csrfHeaderName = config.csrfHeaderName ?? 'X-CSRF-Token';
     this._serverColumns = config.columns.map((c) => ({
@@ -39,6 +41,11 @@ export class ServerDataTableStore<T = any> extends DataTableStore<T> {
       headers[this._csrfHeaderName] = token;
     }
     return headers;
+  }
+
+  private _resolveServerParams(): Record<string, any> {
+    if (!this._serverParams) return {};
+    return typeof this._serverParams === 'function' ? this._serverParams() : this._serverParams;
   }
 
   override setSort(sort: SortState[]) {
@@ -82,6 +89,7 @@ export class ServerDataTableStore<T = any> extends DataTableStore<T> {
     this._abortController = new AbortController();
 
     const state = this.getState();
+    const customFilters = this._resolveServerParams();
     this.setLoading(true);
     this.setError(null);
 
@@ -91,6 +99,7 @@ export class ServerDataTableStore<T = any> extends DataTableStore<T> {
       start: (state.pagination.page - 1) * state.pagination.perPage,
       length: state.pagination.perPage,
       search: { value: state.globalSearch, regex: false },
+      customFilters,
       order: state.sort.map((s) => ({
         column: this._serverColumns.findIndex((c) => c.data === s.column),
         dir: s.direction,
@@ -121,6 +130,11 @@ export class ServerDataTableStore<T = any> extends DataTableStore<T> {
         params.set('length', String(request.length));
         params.set('search[value]', request.search.value);
         params.set('search[regex]', String(request.search.regex));
+        Object.entries(customFilters).forEach(([key, value]) => {
+          if (value !== undefined && value !== null && value !== '') {
+            params.set(`filters[${key}]`, String(value));
+          }
+        });
 
         request.order.forEach((o, i) => {
           params.set(`order[${i}][column]`, String(o.column));

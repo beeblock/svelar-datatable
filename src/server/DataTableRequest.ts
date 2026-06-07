@@ -46,7 +46,23 @@ export function parseDataTableRequest(params: URLSearchParams): DataTableRequest
     colIdx++;
   }
 
-  return { draw, start, length, search, order, columns };
+  const customFilters: Record<string, string> = {};
+  for (const [key, value] of params.entries()) {
+    const match = key.match(/^filters\[(.+)\]$/);
+    if (match && value !== '') {
+      customFilters[match[1]] = value;
+    }
+  }
+
+  return {
+    draw,
+    start,
+    length,
+    search,
+    order,
+    columns,
+    ...(Object.keys(customFilters).length > 0 ? { customFilters } : {}),
+  };
 }
 
 export async function parseDataTableRequestFromBody(request: Request): Promise<DataTableRequest> {

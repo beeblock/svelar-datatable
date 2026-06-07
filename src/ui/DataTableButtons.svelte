@@ -10,6 +10,14 @@
   let { buttons, store, columns }: Props = $props();
 
   const exportManager = new ExportManager();
+  let state = $state(store.getState());
+  let selectedRows = $derived(state.allRows.filter((row) => state.selectedIds.has(store.getRowId(row))));
+
+  $effect(() => {
+    return store.subscribe(() => {
+      state = store.getState();
+    });
+  });
 
   const exportLabels: Record<ExportFormat, string> = {
     csv: 'CSV',
@@ -32,15 +40,13 @@
 
   async function handleAction(btn: ButtonDef) {
     if (typeof btn.action === 'function') {
-      const selected = store.getSelectedRows();
-      const state = store.getState();
-      await btn.action(selected, state.allRows);
+      await btn.action(selectedRows, state.allRows);
     }
   }
 
   function isDisabled(btn: ButtonDef): boolean {
     if (typeof btn.disabled === 'function') {
-      return btn.disabled(store.getSelectedRows());
+      return btn.disabled(selectedRows);
     }
     return btn.disabled ?? false;
   }

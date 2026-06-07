@@ -55,6 +55,7 @@ export interface DataTableRequest {
   length: number;
   search: { value: string; regex: boolean };
   order: { column: number; dir: 'asc' | 'desc' }[];
+  customFilters?: Record<string, any>;
   columns: {
     data: string;
     name: string;
@@ -144,6 +145,7 @@ export interface DataTableConfig<T = any> {
   data?: T[];
   serverUrl?: string;
   serverMethod?: 'GET' | 'POST';
+  serverParams?: Record<string, any> | (() => Record<string, any>);
   // CSRF token config (defaults to Svelar conventions)
   csrfCookieName?: string;
   csrfHeaderName?: string;

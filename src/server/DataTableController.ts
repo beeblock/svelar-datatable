@@ -24,6 +24,15 @@ export class DataTableController extends Controller {
         request = parseDataTableRequest(event.url.searchParams);
       }
 
+      if (this._options?.filters && event.url?.searchParams) {
+        const filters: Record<string, string> = {};
+        for (const name of Object.keys(this._options.filters)) {
+          const value = event.url.searchParams.get(`filters[${name}]`) ?? event.url.searchParams.get(name);
+          if (value !== null) filters[name] = value;
+        }
+        service.applyFilters(filters);
+      }
+
       const response = await service.process(request);
       return this.json(response);
     } catch (err: any) {

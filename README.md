@@ -84,6 +84,141 @@ export const POST = dt.handle('query');
 
 The server controller handles pagination, sorting, searching, and filtering — compatible with the jQuery DataTables wire protocol.
 
+Server search is case-insensitive on PostgreSQL (`ILIKE`) and uses the database driver's normal `LIKE` behavior on SQLite/MySQL.
+
+### Server Filters
+
+Use `serverParams` on the component for custom server filters. GET requests send these as `filters[name]` query params; POST requests include them in `customFilters`.
+
+```svelte
+<script lang="ts">
+  let priority = $state('');
+
+  function serverParams() {
+    return priority ? { priority } : {};
+  }
+</script>
+
+<DataTable
+  serverUrl="/api/datatable/cards"
+  columns={columns}
+  serverParams={serverParams}
+  searchable
+  sortable
+/>
+```
+
+Register matching filters on the server:
+
+```ts
+import { DataTableController } from '@beeblock/svelar-datatable/server';
+import { Card } from '$lib/modules/boards/domain/models/Card.js';
+
+const dt = new DataTableController(Card, {
+  searchable: ['title', 'description', 'priority'],
+  orderable: ['title', 'priority', 'updated_at'],
+  filters: {
+    priority: (query, value) => query.where('priority', value),
+  },
+});
+
+export const GET = dt.handle('query');
+```
+
+### Meilisearch
+
+When a model uses Svelar's `Searchable` mixin, global server search can use Meilisearch:
+
+```ts
+const dt = new DataTableController(Card, {
+  searchDriver: 'auto',
+  filters: {
+    priority: (query, value) => query.where('priority', value),
+  },
+  meilisearchFilter: (filters) => {
+    if (!filters.priority) return undefined;
+    return `priority = "${String(filters.priority).replaceAll('"', '\\"')}"`;
+  },
+});
+```
+
+`searchDriver: 'auto'` is the default. It tries Meilisearch for global search when the model exposes `search()`, then falls back to database search if Meilisearch is not configured. Use `searchDriver: 'database'` to force SQL search, or `searchDriver: 'meilisearch'` to fail instead of falling back.
+
+Meilisearch mode returns the indexed document fields from `model.search()`. Keep the datatable columns in the model's searchable/displayed attributes, and mark filtered/sorted attributes in Meilisearch index settings.
+
+## Extending and Customizing
+
+The plugin is meant to stay a reusable table black box, but it exposes extension points instead of forcing app-specific forks.
+
+### Frontend Extension Points
+
+- `customCell` snippet for custom badges, links, menus, previews, or composed app UI.
+- `buttons` for export buttons and custom actions that receive selected rows and all rows.
+- `classNames` for Tailwind/shadcn styling without editing plugin CSS.
+- `bind:storeRef` for page-level controls such as external filters, refresh buttons, selected-row panels, or programmatic column visibility.
+- `editorField` and `editorMode` for inline, modal, bubble, or Excel-style editing.
+
+```svelte
+<script lang="ts">
+  import { DataTable } from '@beeblock/svelar-datatable/ui';
+  import type { ButtonDef, ColumnDef } from '@beeblock/svelar-datatable';
+
+  const columns: ColumnDef[] = [
+    { key: 'title', header: 'Title' },
+    { key: 'priority', header: 'Priority', type: 'custom' },
+    { key: 'actions', header: 'Actions', type: 'custom', sortable: false, searchable: false },
+  ];
+
+  const buttons: ButtonDef[] = [
+    {
+      key: 'archive',
+      label: 'Archive selected',
+      disabled: (rows) => rows.length === 0,
+      action: (rows) => archiveCards(rows),
+    },
+  ];
+</script>
+
+{#snippet customCell({ row, column, value })}
+  {#if column.key === 'priority'}
+    <span class="rounded border px-2 py-0.5 text-xs">{value}</span>
+  {:else if column.key === 'actions'}
+    <button type="button" onclick={() => openCard(row)}>Open</button>
+  {:else}
+    {value}
+  {/if}
+{/snippet}
+
+<DataTable {columns} data={cards} {buttons} {customCell} selectable="multi" />
+```
+
+### Server Extension Points
+
+- `filters` on `DataTableController` or `DataTableService.addFilter()` for app-specific server filters.
+- `baseQuery` for tenant/team/user scoping.
+- `scopes` for named reusable query constraints.
+- `computedColumns` for derived SQL columns.
+- `searchDriver`, `meilisearchFilter`, and `meilisearchSort` for Searchable/Meilisearch-backed server search.
+
+```ts
+const dt = new DataTableController(Card, {
+  baseQuery: (query) => query.where('board_id', board.id),
+  searchable: ['title', 'description', 'priority'],
+  orderable: ['title', 'priority', 'position', 'updated_at'],
+  filters: {
+    priority: (query, value) => query.where('priority', value),
+    completed: (query, value) => query.where('completed', value === 'true'),
+  },
+  searchDriver: 'auto',
+  meilisearchFilter: (filters) => {
+    const clauses = [];
+    if (filters.priority) clauses.push(`priority = "${filters.priority}"`);
+    if (filters.completed) clauses.push(`completed = ${filters.completed === 'true'}`);
+    return clauses.length ? clauses.join(' AND ') : undefined;
+  },
+});
+```
+
 ## Plugin Contract
 
 The package exposes the required Svelar plugin entry at `@beeblock/svelar-datatable/plugin`.
@@ -110,6 +245,45 @@ Four editor modes, configured via `editorMode`:
 
 <!-- Excel (spreadsheet navigation) -->
 <DataTable editorMode="excel" onCellEdit={saveCellEdit} />
+```
+
+Server-side Excel editing should still go through normal Svelar backend layers. Wire `onCellEdit` to a PATCH route that validates with a FormRequest, creates a DTO, runs an action/service, and returns a resource response. Throw from `onCellEdit` when the API rejects the update so the table can keep the old value.
+
+```svelte
+<script lang="ts">
+  import { apiFetchJson } from '@beeblock/svelar/http';
+  import type { ButtonDef, ExportFormat } from '@beeblock/svelar-datatable';
+
+  async function saveCell(row, columnKey, newValue) {
+    const response = await apiFetchJson(`/api/datatable/cards/${row.public_id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ column: columnKey, value: newValue }),
+    });
+
+    if (!response.ok) {
+      throw new Error(response.error?.message ?? 'Failed to update row');
+    }
+  }
+
+  const buttons: (ButtonDef | ExportFormat)[] = [
+    'csv',
+    {
+      key: 'mark-urgent',
+      label: 'Mark urgent',
+      disabled: (rows) => rows.length === 0,
+      action: (rows) => Promise.all(rows.map((row) => saveCell(row, 'priority', 'urgent'))),
+    },
+  ];
+</script>
+
+<DataTable
+  serverUrl="/api/datatable/cards"
+  {columns}
+  selectable="multi"
+  editorMode="excel"
+  onCellEdit={saveCell}
+  {buttons}
+/>
 ```
 
 ## Tailwind Customization

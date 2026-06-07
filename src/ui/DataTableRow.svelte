@@ -115,11 +115,28 @@
 >
   {#if selectable === 'multi'}
     <td class="sdt-cell sdt-cell-checkbox {classNames.td ?? ''}">
-      <input type="checkbox" checked={isSelected} onchange={() => store.toggleSelect(rowId)} />
+      <input
+        type="checkbox"
+        checked={isSelected}
+        onclick={(e) => e.stopPropagation()}
+        onchange={(e) => {
+          e.stopPropagation();
+          store.toggleSelect(rowId);
+        }}
+      />
     </td>
   {:else if selectable === 'single'}
     <td class="sdt-cell sdt-cell-checkbox {classNames.td ?? ''}">
-      <input type="radio" checked={isSelected} name="sdt-select" />
+      <input
+        type="radio"
+        checked={isSelected}
+        name="sdt-select"
+        onclick={(e) => e.stopPropagation()}
+        onchange={(e) => {
+          e.stopPropagation();
+          store.selectSingle(rowId);
+        }}
+      />
     </td>
   {/if}
 

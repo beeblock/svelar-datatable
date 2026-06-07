@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DataTableService } from '../src/server/DataTableService.js';
 import type { DataTableRequest } from '../src/types.js';
+import { Connection } from '@beeblock/svelar/database';
 
 type Row = { id: number; name: string; email: string; role: string };
 type Filter = (row: Row) => boolean;
@@ -20,6 +21,9 @@ class FakeQuery {
     this.filters.push((row) => {
       const current = String(row[column] ?? '');
       if (operator === 'LIKE') {
+        return current.includes(String(value).replaceAll('%', ''));
+      }
+      if (operator === 'ILIKE') {
         return current.toLowerCase().includes(String(value).replaceAll('%', '').toLowerCase());
       }
       return current === String(value);
@@ -100,6 +104,9 @@ class FakeNestedQuery {
     this.filters.push((row) => {
       const current = String(row[column] ?? '');
       if (operator === 'LIKE') {
+        return current.includes(String(value).replaceAll('%', ''));
+      }
+      if (operator === 'ILIKE') {
         return current.toLowerCase().includes(String(value).replaceAll('%', '').toLowerCase());
       }
       return current === String(value);
@@ -121,6 +128,16 @@ const rows: Row[] = [
   { id: 2, name: 'Bob', email: 'bob@example.com', role: 'member' },
   { id: 3, name: 'Charlie', email: 'charlie@example.com', role: 'member' },
 ];
+
+Connection.configure({
+  default: 'default',
+  connections: {
+    default: {
+      driver: 'postgres',
+      database: 'test',
+    },
+  },
+});
 
 const model = {
   query: () => new FakeQuery(rows),
@@ -178,5 +195,62 @@ describe('DataTableService', () => {
 
     expect(response.recordsFiltered).toBe(1);
     expect(response.data[0].name).toBe('Alice');
+  });
+
+  it('uses case-insensitive search for PostgreSQL server queries', async () => {
+    const service = new DataTableService<Row>(model, {
+      searchable: ['name'],
+      searchDriver: 'database',
+    });
+
+    const response = await service.process(request({
+      search: { value: 'alice', regex: false },
+    }));
+
+    expect(response.recordsFiltered).toBe(1);
+    expect(response.data[0].name).toBe('Alice');
+  });
+
+  it('applies custom server filters before counting filtered rows', async () => {
+    const service = new DataTableService<Row>(model, {
+      filters: {
+        role: (query, value) => query.where('role', value),
+      },
+    });
+
+    const response = await service.process(request({
+      customFilters: { role: 'member' },
+    }));
+
+    expect(response.recordsTotal).toBe(3);
+    expect(response.recordsFiltered).toBe(2);
+    expect(response.data.map((row) => row.name)).toEqual(['Bob', 'Charlie']);
+  });
+
+  it('uses Meilisearch for Searchable models when searchDriver is auto', async () => {
+    const searchableModel = {
+      query: () => new FakeQuery(rows),
+      search: async (query: string, options: any) => ({
+        hits: [{ id: 10, name: `Meili ${query}`, email: 'meili@example.com', role: 'admin' }],
+        query,
+        processingTimeMs: 1,
+        estimatedTotalHits: 1,
+        limit: options.limit,
+        offset: options.offset,
+      }),
+    };
+    const service = new DataTableService<Row>(searchableModel);
+
+    const response = await service.process(request({
+      search: { value: 'redis', regex: false },
+      start: 5,
+      length: 10,
+    }));
+
+    expect(response.recordsTotal).toBe(3);
+    expect(response.recordsFiltered).toBe(1);
+    expect(response.data).toEqual([
+      { id: 10, name: 'Meili redis', email: 'meili@example.com', role: 'admin' },
+    ]);
   });
 });

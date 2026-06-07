@@ -24,6 +24,7 @@
     data,
     serverUrl,
     serverMethod,
+    serverParams,
     // Columns
     columns,
     // Features
@@ -84,7 +85,7 @@
 
   // Build config object
   let config: DataTableConfig = $derived({
-    data, serverUrl, serverMethod, columns, sortable, searchable, paginate,
+    data, serverUrl, serverMethod, serverParams, columns, sortable, searchable, paginate,
     selectable, perPage, perPageOptions, searchDebounceMs, stateSaveKey,
     rowId, rowClass, buttons, editorMode, editorFields,
     onSort, onFilter, onPageChange, onSelect, onRowClick, onEdit, onCellEdit, onCreate, onDelete,
