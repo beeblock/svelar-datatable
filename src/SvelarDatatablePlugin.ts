@@ -1,6 +1,7 @@
 import { Plugin } from '@beeblock/svelar/plugins';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { readFileSync } from 'node:fs';
 import type { DataTableConfig } from './types.js';
 import type { Container } from '@beeblock/svelar/container';
 
@@ -8,9 +9,6 @@ interface DatatablePluginConfig {
   prefix?: string;
   defaults?: Partial<DataTableConfig>;
 }
-
-export const SVELAR_DATATABLE_PACKAGE = '@beeblock/svelar-datatable';
-export const SVELAR_DATATABLE_VERSION = '0.2.0';
 
 const defaultConfig: DatatablePluginConfig = {
   prefix: '/api',
@@ -35,6 +33,21 @@ const defaultConfig: DatatablePluginConfig = {
 const distDir = dirname(fileURLToPath(import.meta.url));
 const packageRoot = dirname(distDir);
 const pub = join(packageRoot, 'src', 'publishable');
+
+function packageMetadata(): { name: string; version: string } {
+  const raw = readFileSync(join(packageRoot, 'package.json'), 'utf8');
+  const pkg = JSON.parse(raw) as { name?: string; version?: string };
+
+  return {
+    name: pkg.name ?? '@beeblock/svelar-datatable',
+    version: pkg.version ?? '0.0.0',
+  };
+}
+
+const metadata = packageMetadata();
+
+export const SVELAR_DATATABLE_PACKAGE = metadata.name;
+export const SVELAR_DATATABLE_VERSION = metadata.version;
 
 export class SvelarDatatablePlugin extends Plugin {
   readonly name = SVELAR_DATATABLE_PACKAGE;
