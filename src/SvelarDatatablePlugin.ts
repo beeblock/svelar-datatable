@@ -10,7 +10,7 @@ interface DatatablePluginConfig {
 }
 
 export const SVELAR_DATATABLE_PACKAGE = '@beeblock/svelar-datatable';
-export const SVELAR_DATATABLE_VERSION = '0.1.9';
+export const SVELAR_DATATABLE_VERSION = '0.2.0';
 
 const defaultConfig: DatatablePluginConfig = {
   prefix: '/api',
