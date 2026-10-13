@@ -127,7 +127,10 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    flex-shrink: 0;
+    flex-wrap: wrap;
+    flex-shrink: 1;
+    min-width: 0;
+    max-width: 100%;
   }
   .sdt-toolbar-btn {
     display: inline-flex;
