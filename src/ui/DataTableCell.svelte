@@ -23,31 +23,31 @@
 
   // svelte-ignore state_referenced_locally
 
-  let state = $state(store.getState());
+  let tableState = $state(store.getState());
   $effect(() => {
     return store.subscribe(() => {
-      state = store.getState();
+      tableState = store.getState();
     });
   });
 
   let isExcelMode = $derived(editorMode === 'excel');
   let isFocused = $derived(
     isExcelMode
-    && state.excelFocusedCell?.rowIndex === rowIndex
-    && state.excelFocusedCell?.columnKey === column.key
+    && tableState.excelFocusedCell?.rowIndex === rowIndex
+    && tableState.excelFocusedCell?.columnKey === column.key
   );
   let isEditing = $derived(
     isExcelMode
-    && state.excelEditingCell?.rowIndex === rowIndex
-    && state.excelEditingCell?.columnKey === column.key
+    && tableState.excelEditingCell?.rowIndex === rowIndex
+    && tableState.excelEditingCell?.columnKey === column.key
   );
 
-  // Inline editor state
+  // Inline editor tableState
   let isInlineEditing = $derived(
     editorMode === 'inline'
-    && state.editorMode === 'inline'
-    && state.editingRowId === store.getRowId(row)
-    && state.editingColumn === column.key
+    && tableState.editorMode === 'inline'
+    && tableState.editingRowId === store.getRowId(row)
+    && tableState.editingColumn === column.key
   );
   let inlineValue = $state('');
 
@@ -211,6 +211,8 @@
   }
 
   function handleInputKeydown(e: KeyboardEvent) {
+    // Handle editing keys once; the containing cell also has a keyboard handler.
+    e.stopPropagation();
     // For select/boolean: left/right arrows also commit+navigate (no cursor to move)
     if (column.type === 'boolean' || column.editorField?.type === 'select') {
       if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
@@ -288,7 +290,7 @@
       <select
         bind:this={inputEl}
         class="sdt-excel-input"
-        value={state.excelEditValue}
+        value={tableState.excelEditValue}
         onchange={(e) => store.setExcelEditValue(e.currentTarget.value)}
         onkeydown={handleInputKeydown}
       >
@@ -299,7 +301,7 @@
       <select
         bind:this={inputEl}
         class="sdt-excel-input"
-        value={state.excelEditValue}
+        value={tableState.excelEditValue}
         onchange={(e) => store.setExcelEditValue(e.currentTarget.value)}
         onkeydown={handleInputKeydown}
       >
@@ -312,7 +314,7 @@
         bind:this={inputEl}
         class="sdt-excel-input"
         type={column.type === 'number' ? 'number' : 'text'}
-        value={state.excelEditValue}
+        value={tableState.excelEditValue}
         oninput={(e) => store.setExcelEditValue(e.currentTarget.value)}
         onkeydown={handleInputKeydown}
       />

@@ -24,8 +24,8 @@ export interface DataTableServiceOptions {
 
 export class DataTableService<T = any> {
   private _model: any;
-  private _searchable: string[] = [];
-  private _orderable: string[] = [];
+  private _searchable: string[] | null = null;
+  private _orderable: string[] | null = null;
   private _baseQueryFn: ((query: any) => any) | null = null;
   private _scopes: Record<string, (query: any) => any> = {};
   private _computedColumns: Record<string, string> = {};
@@ -109,13 +109,26 @@ export class DataTableService<T = any> {
   private shouldUseMeilisearch(request: DataTableRequest): boolean {
     if (!request.search.value) return false;
     if (this._searchDriver === 'database') return false;
-    return typeof this._model.search === 'function';
+    if (typeof this._model.search !== 'function') {
+      if (this._searchDriver === 'meilisearch') throw new Error('The model does not support indexed search.');
+      return false;
+    }
+
+    // Index searches do not inherit ORM visibility guards. Never silently drop them.
+    const constrained = this._baseQueryFn !== null || this._activeScopes.length > 0
+      || this._model.tenantScoped || this._model.softDeletes
+      || (typeof this._model.globalScopes === 'function' && this._model.globalScopes().size > 0)
+      || request.columns.some((column) => column.search.value && column.searchable)
+      || (Object.keys({ ...request.customFilters, ...this._activeFilters }).length > 0 && !this._meilisearchFilter)
+      || Object.keys(this._computedColumns).length > 0;
+    if (constrained && this._searchDriver === 'meilisearch') {
+      throw new Error('Indexed search cannot preserve the configured database constraints.');
+    }
+    return !constrained;
   }
 
   private sortableColumns(request: DataTableRequest): string[] {
-    return this._orderable.length > 0
-      ? this._orderable
-      : request.columns.filter((c) => c.orderable).map((c) => c.data);
+    return this._orderable ?? request.columns.filter((c) => c.orderable).map((c) => c.data);
   }
 
   private meilisearchSort(request: DataTableRequest): string[] | undefined {
@@ -145,6 +158,9 @@ export class DataTableService<T = any> {
     };
 
     const filter = this._meilisearchFilter?.(filters, request);
+    if (Object.keys(filters).length > 0 && !filter) {
+      throw new Error('Indexed search requires a mapping for active filters.');
+    }
     if (filter) searchOptions.filter = filter;
 
     const sort = this.meilisearchSort(request);
@@ -164,8 +180,7 @@ export class DataTableService<T = any> {
     try {
       // Get total count (unfiltered)
       const totalQuery = this._model.query();
-      if (this._baseQueryFn) this._baseQueryFn(totalQuery);
-      const recordsTotal = await totalQuery.count();
+      const recordsTotal = await (this._baseQueryFn?.(totalQuery) ?? totalQuery).count();
       const customFilters = { ...request.customFilters, ...this._activeFilters };
 
       if (this.shouldUseMeilisearch(request)) {
@@ -178,16 +193,16 @@ export class DataTableService<T = any> {
 
       // Build filtered query
       let query = this._model.query();
-      if (this._baseQueryFn) this._baseQueryFn(query);
+      if (this._baseQueryFn) query = this._baseQueryFn(query) ?? query;
 
       // Apply active scopes
       for (const scopeName of this._activeScopes) {
-        const scopeFn = this._scopes[scopeName];
-        if (scopeFn) scopeFn(query);
+        const scopeFn = Object.hasOwn(this._scopes, scopeName) ? this._scopes[scopeName] : undefined;
+        if (scopeFn) query = scopeFn(query) ?? query;
       }
 
       for (const [name, value] of Object.entries(customFilters)) {
-        const filterFn = this._filters[name];
+        const filterFn = Object.hasOwn(this._filters, name) ? this._filters[name] : undefined;
         if (filterFn && value !== undefined && value !== null && value !== '') {
           const next = filterFn(query, value, { request, filter: name });
           if (next) query = next;
@@ -195,17 +210,21 @@ export class DataTableService<T = any> {
       }
 
       // Apply computed columns as selects
-      for (const [name, expr] of Object.entries(this._computedColumns)) {
-        query = query.selectRaw(`(${expr}) as ${name}`);
+      const computedColumns = Object.entries(this._computedColumns);
+      if (computedColumns.length > 0) {
+        // Core selectRaw replaces its default wildcard. Preserve ordinary model fields,
+        // while leaving custom query projections under the application's control.
+        const customQuery = this._baseQueryFn !== null || this._activeScopes.length > 0
+          || Object.keys(customFilters).some((name) => Object.hasOwn(this._filters, name));
+        const computedSelect = computedColumns.map(([name, expr]) => `(${expr}) as ${name}`).join(', ');
+        query = query.selectRaw(`${customQuery ? '' : '*, '}${computedSelect}`);
       }
 
       // Global search
       if (request.search.value) {
         const searchValue = request.search.value;
         const operator = this.searchOperator();
-        const searchCols = this._searchable.length > 0
-          ? this._searchable
-          : request.columns.filter((c) => c.searchable).map((c) => c.data);
+        const searchCols = this._searchable ?? request.columns.filter((c) => c.searchable).map((c) => c.data);
 
         if (searchCols.length > 0) {
           query = query.whereNested((q: any) => {
@@ -223,7 +242,7 @@ export class DataTableService<T = any> {
 
       // Per-column search
       for (const col of request.columns) {
-        if (col.search.value && col.searchable) {
+        if (col.search.value && col.searchable && (this._searchable === null || this._searchable.includes(col.data))) {
           query = query.where(col.data, this.searchOperator(), `%${col.search.value}%`);
         }
       }
@@ -235,7 +254,7 @@ export class DataTableService<T = any> {
       // Ordering
       for (const order of request.order) {
         const col = request.columns[order.column];
-        if (col) {
+        if (col?.orderable) {
           const orderableList = this.sortableColumns(request);
 
           if (orderableList.includes(col.data)) {
@@ -262,7 +281,7 @@ export class DataTableService<T = any> {
         recordsTotal: 0,
         recordsFiltered: 0,
         data: [],
-        error: err.message ?? 'Server error',
+        error: 'Unable to load table data.',
       };
     }
   }

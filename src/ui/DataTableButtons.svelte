@@ -10,6 +10,7 @@
   let { buttons, store, columns }: Props = $props();
 
   const exportManager = new ExportManager();
+  // svelte-ignore state_referenced_locally
   let state = $state(store.getState());
   let selectedRows = $derived(state.allRows.filter((row) => state.selectedIds.has(store.getRowId(row))));
 

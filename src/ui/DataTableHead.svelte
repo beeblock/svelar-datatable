@@ -82,11 +82,10 @@
         style:width={col.width}
         style:min-width={col.minWidth}
         style:max-width={col.maxWidth}
+        aria-sort={getSortDirection(col.key) === 'asc' ? 'ascending' : getSortDirection(col.key) === 'desc' ? 'descending' : undefined}
       >
         {#if sortable && col.sortable !== false}
-          <!-- svelte-ignore a11y_click_events_have_key_events -->
-          <!-- svelte-ignore a11y_no_static_element_interactions -->
-          <div class="sdt-th-sort" onclick={(e) => handleSort(col, e)}>
+          <button type="button" class="sdt-th-sort" onclick={(e) => handleSort(col, e)}>
             <span>{col.header}</span>
             <span class="sdt-sort-indicator">
               {#if getSortDirection(col.key) === 'asc'}
@@ -106,7 +105,7 @@
                 <span class="sdt-sort-index">{getSortIndex(col.key) + 1}</span>
               {/if}
             </span>
-          </div>
+          </button>
         {:else}
           <span>{col.header}</span>
         {/if}
@@ -154,6 +153,18 @@
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
+    border: 0;
+    padding: 0;
+    background: none;
+    font: inherit;
+    color: inherit;
+    text-transform: inherit;
+    letter-spacing: inherit;
+    cursor: pointer;
+  }
+  .sdt-th-sort:focus-visible {
+    outline: 2px solid var(--sdt-primary, #3b82f6);
+    outline-offset: 2px;
   }
   .sdt-sort-indicator {
     display: inline-flex;

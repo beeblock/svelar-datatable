@@ -158,6 +158,7 @@
         {onExcelNavigate}
         {onExcelCommit}
         {onInlineCommit}
+        {onBubbleAnchor}
       />
     {/each}
     {#if virtualScroll && virtualBottomPad > 0}

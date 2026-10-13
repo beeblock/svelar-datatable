@@ -1,7 +1,7 @@
 import { Controller } from '@beeblock/svelar/routing';
 import type { DataTableResponse } from '../types.js';
 import { DataTableService, type DataTableServiceOptions } from './DataTableService.js';
-import { parseDataTableRequest, parseDataTableRequestFromBody } from './DataTableRequest.js';
+import { DataTableRequestError, parseDataTableRequest, parseDataTableRequestFromBody } from './DataTableRequest.js';
 
 export class DataTableController extends Controller {
   private _model: any;
@@ -34,16 +34,16 @@ export class DataTableController extends Controller {
       }
 
       const response = await service.process(request);
-      return this.json(response);
+      return this.json(response, response.error ? 500 : 200);
     } catch (err: any) {
       const errorResponse: DataTableResponse = {
         draw: 0,
         recordsTotal: 0,
         recordsFiltered: 0,
         data: [],
-        error: err.message ?? 'Internal server error',
+        error: err instanceof DataTableRequestError ? err.message : 'Unable to load table data.',
       };
-      return this.json(errorResponse, 500);
+      return this.json(errorResponse, err instanceof DataTableRequestError ? 400 : 500);
     }
   }
 }

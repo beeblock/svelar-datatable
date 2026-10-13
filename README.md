@@ -8,9 +8,9 @@ Full-featured DataTable plugin for [Svelar](https://svelar.dev) / SvelteKit 2 wi
 - **Searching** — global search with debounce
 - **Pagination** — configurable per-page options, page navigation
 - **Selection** — single, multi, range (Shift+click), select all
-- **Column management** — visibility toggle, reorder, resize
+- **Column management** — visibility toggle and programmatic column ordering
 - **Editing** — four modes: modal, bubble (popover), inline (double-click), excel (spreadsheet)
-- **Export** — CSV, clipboard, print (Excel/PDF with optional deps)
+- **Export** — CSV, clipboard, browser print/PDF, and Excel with optional ExcelJS
 - **Virtual scroll** — render 10,000+ rows with only visible DOM nodes
 - **Row grouping** — group rows by any column value
 - **Per-column filters** — programmatic column-level filtering
@@ -18,7 +18,7 @@ Full-featured DataTable plugin for [Svelar](https://svelar.dev) / SvelteKit 2 wi
 - **Row customization** — `rowClass`, `rowId` function, expandable detail rows
 - **Server-side** — jQuery DataTables wire protocol compatible, GET or POST
 - **State persistence** — save sort/filter/page/column state to localStorage
-- **Tailwind CSS** — `classNames` prop for pure Tailwind customization of every element
+- **Tailwind CSS** — `classNames` hooks for table, toolbar, pagination, modal, and error surfaces
 - **CSS variables** — 12+ CSS custom properties for quick theming
 - **Footer aggregation** — per-column footer with custom functions
 - **Responsive** — horizontal scroll for small screens
@@ -34,7 +34,7 @@ npm install @beeblock/svelar-datatable
 npx svelar plugin:publish @beeblock/svelar-datatable
 ```
 
-Peer dependencies: `@beeblock/svelar >= 0.6.7`, `svelte ^5.0.0`. `exceljs` is an optional peer dependency used only for Excel export.
+Requires Node.js 22.12 or newer. Peer dependencies: `@beeblock/svelar ^0.8.0`, `svelte ^5.0.0`. `exceljs >=4.4.0` is an optional peer dependency used only for Excel export.
 
 ## Quick Start
 
@@ -82,7 +82,9 @@ export const GET = dt.handle('query');
 export const POST = dt.handle('query');
 ```
 
-The server controller handles pagination, sorting, searching, and filtering — compatible with the jQuery DataTables wire protocol.
+Create a `DataTableController` instance and bind handlers with `dt.handle('query')`. Guard endpoints through the application's capability/access resolver, and keep authentication and CSRF protection enabled. Configure server-owned `searchable` and `orderable` column lists.
+
+The server controller handles pagination, sorting, searching, and filtering through the jQuery DataTables wire protocol. GET page lengths are clamped to 1–1000. POST JSON is validated against the protocol, including the same length bounds; malformed requests return HTTP 400. Query failures return HTTP 500 with a generic error message.
 
 Server search is case-insensitive on PostgreSQL (`ILIKE`) and uses the database driver's normal `LIKE` behavior on SQLite/MySQL.
 
@@ -142,7 +144,7 @@ const dt = new DataTableController(Card, {
 });
 ```
 
-`searchDriver: 'auto'` is the default. It tries Meilisearch for global search when the model exposes `search()`, then falls back to database search if Meilisearch is not configured. Use `searchDriver: 'database'` to force SQL search, or `searchDriver: 'meilisearch'` to fail instead of falling back.
+`searchDriver: 'auto'` is the default. It tries Meilisearch for global search when the model exposes `search()` and the query has no database-only constraints. It uses database search for tenant or soft-delete guards, model global scopes, base queries, active scopes, per-column searches, computed columns, and custom filters without an index filter mapping. An unavailable index or missing mapping for active custom filters also falls back to database search. Use `searchDriver: 'database'` to force SQL search. Explicit `searchDriver: 'meilisearch'` fails when indexed search cannot preserve these constraints or the model does not expose `search()`.
 
 Meilisearch mode returns the indexed document fields from `model.search()`. Keep the datatable columns in the model's searchable/displayed attributes, and mark filtered/sorted attributes in Meilisearch index settings.
 
@@ -288,7 +290,7 @@ Server-side Excel editing should still go through normal Svelar backend layers. 
 
 ## Tailwind Customization
 
-Style every element with Tailwind utility classes via the `classNames` prop:
+Style the supported surfaces with Tailwind utility classes via the `classNames` prop:
 
 ```svelte
 <DataTable
@@ -309,7 +311,9 @@ Style every element with Tailwind utility classes via the `classNames` prop:
 />
 ```
 
-All 39 keys from `DataTableClassNames` are wired: `container`, `toolbar`, `toolbarLeft`, `toolbarRight`, `searchInput`, `thead`, `th`, `tbody`, `tr`, `trSelected`, `trEven`, `td`, `tfoot`, `tf`, `pagination`, `paginationInfo`, `paginationControls`, `pageButton`, `pageButtonActive`, `perPageSelect`, `btn`, `btnCreate`, `btnEdit`, `btnDelete`, `editorModal`, `editorBackdrop`, `editorField`, `editorInput`, `editorLabel`, `loading`, `empty`, `error`.
+The component uses these 26 `classNames` hooks: `container`, `toolbar`, `toolbarLeft`, `toolbarRight`, `searchInput`, `table` (the scroll wrapper), `thead`, `th`, `tbody`, `tr`, `trSelected`, `trEven`, `td`, `tfoot`, `tf`, `pagination`, `paginationInfo`, `paginationControls`, `pageButton`, `perPageSelect`, `btnCreate`, `btnEdit`, `btnDelete`, `editorModal`, `editorBackdrop`, and `error`.
+
+The type also declares `thSortable`, `pageButtonActive`, `btn`, `editorField`, `editorInput`, `editorLabel`, `loading`, and `empty`; the current components do not consume those keys. Active page buttons use the `sdt-page-active` class. Editor inputs accept `EditorFieldDef.className`.
 
 ## Imports
 
@@ -338,6 +342,7 @@ Full documentation with all props, callbacks, store API, and examples: [svelar.d
 
 ```bash
 npm run lint
+npm run check
 npm run test
 npm run build
 ```

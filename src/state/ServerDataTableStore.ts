@@ -1,11 +1,15 @@
-import type { DataTableConfig, DataTableRequest, DataTableResponse, DataTableState, FilterState, SortState } from '../types.js';
+import type { DataTableConfig, DataTableRequest, DataTableResponse, FilterState, SortState } from '../types.js';
 import { DataTableStore } from './DataTableStore.js';
 
 function getCsrfToken(cookieName = 'XSRF-TOKEN'): string | null {
   if (typeof document === 'undefined') return null;
   const escaped = cookieName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${escaped}=([^;]*)`));
-  return match ? decodeURIComponent(match[1]) : null;
+  try {
+    return match ? decodeURIComponent(match[1]) : null;
+  } catch {
+    return null;
+  }
 }
 
 export class ServerDataTableStore<T = any> extends DataTableStore<T> {
@@ -18,6 +22,8 @@ export class ServerDataTableStore<T = any> extends DataTableStore<T> {
   private _serverColumns: { data: string; name: string; searchable: boolean; orderable: boolean }[];
   private _csrfCookieName: string;
   private _csrfHeaderName: string;
+  private _searchDebounceMs: number;
+  private _destroyed = false;
 
   constructor(config: DataTableConfig<T>) {
     super(config);
@@ -26,11 +32,12 @@ export class ServerDataTableStore<T = any> extends DataTableStore<T> {
     this._serverParams = config.serverParams;
     this._csrfCookieName = config.csrfCookieName ?? 'XSRF-TOKEN';
     this._csrfHeaderName = config.csrfHeaderName ?? 'X-CSRF-Token';
+    this._searchDebounceMs = config.searchDebounceMs ?? 300;
     this._serverColumns = config.columns.map((c) => ({
       data: c.key,
       name: c.key,
       searchable: c.searchable !== false,
-      orderable: c.sortable !== false,
+      orderable: c.sortable !== false && c.orderable !== false,
     }));
   }
 
@@ -51,69 +58,89 @@ export class ServerDataTableStore<T = any> extends DataTableStore<T> {
   override setSort(sort: SortState[]) {
     const state = this.getState();
     // Update sort in state without recomputing locally
-    (this as any)._state = { ...state, sort, pagination: { ...state.pagination, page: 1 } };
+    this._state = { ...state, sort, pagination: { ...state.pagination, page: 1 } };
+    this._notify();
+    this._saveState();
     this._debouncedFetch();
   }
 
   override setGlobalSearch(search: string) {
     const state = this.getState();
-    (this as any)._state = { ...state, globalSearch: search, pagination: { ...state.pagination, page: 1 } };
+    this._state = { ...state, globalSearch: search, pagination: { ...state.pagination, page: 1 } };
+    this._notify();
+    this._saveState();
     this._debouncedFetch();
   }
 
   override setFilters(filters: FilterState[]) {
     const state = this.getState();
-    (this as any)._state = { ...state, filters, pagination: { ...state.pagination, page: 1 } };
+    this._state = { ...state, filters, pagination: { ...state.pagination, page: 1 } };
+    this._notify();
+    this._saveState();
     this._debouncedFetch();
   }
 
   override setPage(page: number) {
     const state = this.getState();
-    (this as any)._state = { ...state, pagination: { ...state.pagination, page } };
-    this._fetchFromServer();
+    this._state = { ...state, pagination: { ...state.pagination, page } };
+    this._saveState();
+    void this._fetchFromServer();
   }
 
   override setPerPage(perPage: number) {
     const state = this.getState();
-    (this as any)._state = { ...state, pagination: { ...state.pagination, perPage, page: 1 } };
-    this._fetchFromServer();
+    this._state = { ...state, pagination: { ...state.pagination, perPage, page: 1 } };
+    this._saveState();
+    void this._fetchFromServer();
   }
 
   private _debouncedFetch() {
+    // Invalidate pending work as soon as the requested table state changes.
+    this._drawCounter++;
+    this._abortController?.abort();
     if (this._fetchDebounceTimer) clearTimeout(this._fetchDebounceTimer);
-    this._fetchDebounceTimer = setTimeout(() => this._fetchFromServer(), 300);
+    this._fetchDebounceTimer = setTimeout(() => {
+      this._fetchDebounceTimer = null;
+      void this._fetchFromServer();
+    }, this._searchDebounceMs);
   }
 
   async _fetchFromServer() {
+    if (this._destroyed) return;
+    if (this._fetchDebounceTimer) {
+      clearTimeout(this._fetchDebounceTimer);
+      this._fetchDebounceTimer = null;
+    }
     if (this._abortController) this._abortController.abort();
-    this._abortController = new AbortController();
+    const controller = new AbortController();
+    this._abortController = controller;
 
     const state = this.getState();
-    const customFilters = this._resolveServerParams();
     this.setLoading(true);
     this.setError(null);
 
     const draw = ++this._drawCounter;
-    const request: DataTableRequest = {
-      draw,
-      start: (state.pagination.page - 1) * state.pagination.perPage,
-      length: state.pagination.perPage,
-      search: { value: state.globalSearch, regex: false },
-      customFilters,
-      order: state.sort.map((s) => ({
-        column: this._serverColumns.findIndex((c) => c.data === s.column),
-        dir: s.direction,
-      })),
-      columns: this._serverColumns.map((col) => ({
-        ...col,
-        search: {
-          value: state.filters.find((f) => f.column === col.data)?.value ?? '',
-          regex: false,
-        },
-      })),
-    };
-
     try {
+      const customFilters = this._resolveServerParams();
+      const request: DataTableRequest = {
+        draw,
+        start: (state.pagination.page - 1) * state.pagination.perPage,
+        length: state.pagination.perPage,
+        search: { value: state.globalSearch, regex: false },
+        customFilters,
+        order: state.sort.map((s) => ({
+          column: this._serverColumns.findIndex((c) => c.data === s.column),
+          dir: s.direction,
+        })).filter((order) => order.column >= 0),
+        columns: this._serverColumns.map((col) => ({
+          ...col,
+          search: {
+            value: String(state.filters.find((f) => f.column === col.data)?.value ?? ''),
+            regex: false,
+          },
+        })),
+      };
+
       let response: Response;
 
       if (this._serverMethod === 'POST') {
@@ -121,7 +148,7 @@ export class ServerDataTableStore<T = any> extends DataTableStore<T> {
           method: 'POST',
           headers: this._buildHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify(request),
-          signal: this._abortController.signal,
+          signal: controller.signal,
         });
       } else {
         const params = new URLSearchParams();
@@ -150,8 +177,10 @@ export class ServerDataTableStore<T = any> extends DataTableStore<T> {
           params.set(`columns[${i}][search][regex]`, String(c.search.regex));
         });
 
-        const url = `${this._serverUrl}?${params.toString()}`;
-        response = await fetch(url, { signal: this._abortController.signal });
+        const [baseUrl, fragment] = this._serverUrl.split('#', 2);
+        const separator = baseUrl.includes('?') ? (/[?&]$/.test(baseUrl) ? '' : '&') : '?';
+        const url = `${baseUrl}${separator}${params.toString()}${fragment === undefined ? '' : `#${fragment}`}`;
+        response = await fetch(url, { signal: controller.signal });
       }
 
       if (!response.ok) {
@@ -161,11 +190,15 @@ export class ServerDataTableStore<T = any> extends DataTableStore<T> {
       const json: DataTableResponse<T> = await response.json();
 
       // Only accept if this is the latest draw
-      if (json.draw === draw) {
-        this.setServerResponse(json);
+      if (this._destroyed || controller.signal.aborted || draw !== this._drawCounter) return;
+      if (json.draw !== draw || !Array.isArray(json.data)
+        || !Number.isSafeInteger(json.recordsTotal) || json.recordsTotal < 0
+        || !Number.isSafeInteger(json.recordsFiltered) || json.recordsFiltered < 0) {
+        throw new Error('Invalid table response');
       }
+      this.setServerResponse(json);
     } catch (err: any) {
-      if (err.name === 'AbortError') return;
+      if (this._destroyed || controller.signal.aborted || draw !== this._drawCounter) return;
       this.setLoading(false);
       this.setError(err.message ?? 'Failed to fetch data');
     }
@@ -176,6 +209,8 @@ export class ServerDataTableStore<T = any> extends DataTableStore<T> {
   }
 
   destroy() {
+    this._destroyed = true;
+    this._drawCounter++;
     if (this._abortController) this._abortController.abort();
     if (this._fetchDebounceTimer) clearTimeout(this._fetchDebounceTimer);
   }

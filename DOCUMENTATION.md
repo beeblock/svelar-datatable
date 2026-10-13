@@ -187,49 +187,46 @@ The CSRF token is automatically read from the `XSRF-TOKEN` cookie and sent in th
 
 ### Server-Side Route Handler
 
-Use `DataTableController` from `@beeblock/svelar-datatable/server` to create a one-liner API route:
+Create a `DataTableController` instance and bind handlers with `dt.handle('query')`. Guard endpoints through the application's capability/access resolver, and keep authentication and CSRF protection enabled. Configure server-owned `searchable` and `orderable` column lists.
 
 ```ts
 // src/routes/api/users/+server.ts
 import { DataTableController } from '@beeblock/svelar-datatable/server';
-import { User } from '$lib/models/User';
+import { User } from '$lib/modules/auth/domain/models/User.js';
 
-export async function GET(event) {
-  return DataTableController.handle(event, User);
-}
-
-export async function POST(event) {
-  return DataTableController.handle(event, User);
-}
+const dt = new DataTableController(User);
+export const GET = dt.handle('query');
+export const POST = dt.handle('query');
 ```
+
+The server controller handles pagination, sorting, searching, and filtering through the jQuery DataTables wire protocol. GET page lengths are clamped to 1–1000. POST JSON is validated against the protocol, including the same length bounds; malformed requests return HTTP 400. Query failures return HTTP 500 with a generic error message.
 
 ### `DataTableServiceOptions`
 
-Pass options to `DataTableController.handle()` or construct a `DataTableService` directly for advanced use:
+Pass options to the `DataTableController` constructor or construct a `DataTableService` directly for advanced use:
 
 ```ts
 import { DataTableController } from '@beeblock/svelar-datatable/server';
-import { User } from '$lib/models/User';
+import { User } from '$lib/modules/auth/domain/models/User.js';
 
-export async function GET(event) {
-  return DataTableController.handle(event, User, {
-    // Only these columns are searchable
-    searchable: ['name', 'email'],
-    // Only these columns can be sorted
-    orderable: ['name', 'email', 'created_at'],
-    // Base query applied to every request (e.g. scoping to active users)
-    baseQuery: (query) => query.where('active', true),
-    // Named scopes you can activate
-    scopes: {
-      admins: (query) => query.where('role', 'admin'),
-      recent: (query) => query.where('created_at', '>', '2025-01-01'),
-    },
-    // Computed columns added as SQL expressions
-    computedColumns: {
-      full_name: "first_name || ' ' || last_name",
-    },
-  });
-}
+const dt = new DataTableController(User, {
+  // Only these columns are searchable
+  searchable: ['name', 'email'],
+  // Only these columns can be sorted
+  orderable: ['name', 'email', 'created_at'],
+  // Base query applied to every request (e.g. scoping to active users)
+  baseQuery: (query) => query.where('active', true),
+  // Named scopes you can activate
+  scopes: {
+    admins: (query) => query.where('role', 'admin'),
+    recent: (query) => query.where('created_at', '>', '2025-01-01'),
+  },
+  // Computed columns added as SQL expressions
+  computedColumns: {
+    full_name: "first_name || ' ' || last_name",
+  },
+});
+export const GET = dt.handle('query');
 ```
 
 ### Advanced: `DataTableService` API
@@ -464,7 +461,7 @@ Control row styling with several props:
 
 ### Unstyled Mode
 
-Strip all built-in CSS and apply your own classes via the `classNames` prop. Ideal for Tailwind CSS projects.
+The `unstyled` prop omits the standard container, table-wrapper, and table class names. Child components retain their scoped styles. Customize the supported surfaces through `classNames` and editor inputs through `EditorFieldDef.className`.
 
 ```svelte
 <DataTable
@@ -484,18 +481,11 @@ Strip all built-in CSS and apply your own classes via the `classNames` prop. Ide
     td: 'px-4 py-3 text-sm text-gray-700',
     pagination: 'flex items-center justify-between px-4 py-3',
     pageButton: 'px-3 py-1 rounded text-sm',
-    pageButtonActive: 'bg-blue-500 text-white',
-    btn: 'px-3 py-1.5 rounded text-sm font-medium',
     btnCreate: 'bg-blue-500 text-white hover:bg-blue-600',
     btnEdit: 'bg-yellow-500 text-white hover:bg-yellow-600',
     btnDelete: 'bg-red-500 text-white hover:bg-red-600',
     editorModal: 'fixed inset-0 z-50 flex items-center justify-center',
     editorBackdrop: 'fixed inset-0 bg-black/50',
-    editorField: 'mb-4',
-    editorInput: 'w-full border rounded px-3 py-2 text-sm',
-    editorLabel: 'block text-sm font-medium text-gray-700 mb-1',
-    loading: 'text-center py-8 text-gray-400',
-    empty: 'text-center py-8 text-gray-400',
     error: 'bg-red-50 text-red-600 px-4 py-2 text-sm',
   }}
 />
@@ -1034,7 +1024,11 @@ Override the built-in styles with CSS custom properties:
 
 ### `classNames` Prop
 
-For full control (especially with Tailwind CSS), use the `classNames` prop. See the `DataTableClassNames` interface:
+The component uses these 26 `classNames` hooks: `container`, `toolbar`, `toolbarLeft`, `toolbarRight`, `searchInput`, `table` (the scroll wrapper), `thead`, `th`, `tbody`, `tr`, `trSelected`, `trEven`, `td`, `tfoot`, `tf`, `pagination`, `paginationInfo`, `paginationControls`, `pageButton`, `perPageSelect`, `btnCreate`, `btnEdit`, `btnDelete`, `editorModal`, `editorBackdrop`, and `error`.
+
+The type also declares `thSortable`, `pageButtonActive`, `btn`, `editorField`, `editorInput`, `editorLabel`, `loading`, and `empty`; the current components do not consume those keys. Active page buttons use the `sdt-page-active` class. Editor inputs accept `EditorFieldDef.className`.
+
+The complete `DataTableClassNames` type is:
 
 ```ts
 interface DataTableClassNames {
@@ -1077,7 +1071,7 @@ interface DataTableClassNames {
 
 ### Tailwind Dark Theme Example
 
-Use the `classNames` prop with Tailwind utility classes to completely restyle the table. Pure Tailwind — no custom CSS, no CSS variables, no `:global()` hacks:
+Style the supported surfaces with Tailwind utility classes via the `classNames` prop:
 
 ```svelte
 <script lang="ts">
@@ -1167,10 +1161,11 @@ Use the `classNames` prop with Tailwind utility classes to completely restyle th
 ```
 
 Key points:
-- **`striped={false}` and `hover={false}`** — disable the built-in hover/stripe CSS so Tailwind classes control everything
+
+- **`striped={false}` and `hover={false}`** — omit the table's hover/stripe modifier classes
 - **`!` (important modifier)** — needed to override built-in `var(--sdt-*)` styles
-- **No `<style>` block** — 100% Tailwind utility classes via the `classNames` prop
-- Every element of the table is customizable: toolbar, search, headers, rows, cells, footer, pagination, buttons, editor modal
+- **Tailwind utility classes** — the example styles the supported `classNames` surfaces
+- Supported hooks cover the toolbar, search, headers, rows, cells, footer, pagination, create/edit/delete buttons, and modal surfaces
 
 ---
 

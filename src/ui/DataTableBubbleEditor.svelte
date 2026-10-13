@@ -14,20 +14,20 @@
 
   // svelte-ignore state_referenced_locally
 
-  let state = $state(store.getState());
+  let tableState = $state(store.getState());
   $effect(() => {
     return store.subscribe(() => {
-      state = store.getState();
+      tableState = store.getState();
     });
   });
 
-  let isOpen = $derived(state.editorMode === 'bubble');
+  let isOpen = $derived(tableState.editorMode === 'bubble');
   let popoverStyle = $state('');
 
   // Get only the field for the column being edited
   let activeFields = $derived(() => {
-    if (state.editingColumn) {
-      const field = fields.find((f) => f.name === state.editingColumn);
+    if (tableState.editingColumn) {
+      const field = fields.find((f) => f.name === tableState.editingColumn);
       return field ? [field] : fields;
     }
     return fields;

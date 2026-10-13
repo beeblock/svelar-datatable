@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { DataTableStore } from '../index.ts';
+  import { onDestroy } from 'svelte';
 
   interface Props {
     store: DataTableStore;
@@ -13,6 +14,7 @@
 
   let inputValue = $state(store.getState().globalSearch);
   let timer: ReturnType<typeof setTimeout> | null = null;
+  onDestroy(() => { if (timer) clearTimeout(timer); });
 
   function handleInput(e: Event) {
     const val = (e.target as HTMLInputElement).value;
@@ -24,6 +26,8 @@
   }
 
   function handleClear() {
+    if (timer) clearTimeout(timer);
+    timer = null;
     inputValue = '';
     store.setGlobalSearch('');
   }
@@ -40,6 +44,7 @@
     value={inputValue}
     oninput={handleInput}
     {placeholder}
+    aria-label="Search table"
   />
   {#if inputValue}
     <button type="button" class="sdt-search-clear" onclick={handleClear} aria-label="Clear search">

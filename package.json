@@ -11,6 +11,9 @@
     "data-grid"
   ],
   "license": "MIT",
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "svelte": "./src/ui/index.ts",
@@ -56,8 +59,9 @@
     "build": "tsup && tsc --emitDeclarationOnly",
     "dev": "tsup --watch",
     "lint": "tsc --noEmit",
+    "check": "svelte-check --tsconfig tsconfig.svelte.json",
     "test": "vitest run",
-    "prepublishOnly": "npm run build && npm run test"
+    "prepublishOnly": "npm run build && npm run test && npm run check"
   },
   "peerDependencies": {
     "@beeblock/svelar": "^0.8.0",
@@ -72,12 +76,26 @@
       "optional": false
     }
   },
+  "overrides": {
+    "tsup": {
+      "esbuild": "^0.28.2"
+    },
+    "exceljs": {
+      "uuid": "^11.1.1"
+    },
+    "@sveltejs/kit": {
+      "cookie": "^0.7.2"
+    }
+  },
   "devDependencies": {
     "@types/node": "^22.20.5",
+    "better-sqlite3": "^12.11.1",
     "cookie": "^1.1.1",
     "esbuild": "^0.28.2",
+    "exceljs": "^4.4.0",
     "joi": "^18.2.9",
     "svelte": "^5.57.2",
+    "svelte-check": "^4.7.6",
     "tsup": "^8.5.0",
     "typescript": "^6.0.3",
     "vitest": "^4.1.11"

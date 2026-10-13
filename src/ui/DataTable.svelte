@@ -25,6 +25,8 @@
     serverUrl,
     serverMethod,
     serverParams,
+    csrfCookieName,
+    csrfHeaderName,
     // Columns
     columns,
     // Features
@@ -85,7 +87,7 @@
 
   // Build config object
   let config: DataTableConfig = $derived({
-    data, serverUrl, serverMethod, serverParams, columns, sortable, searchable, paginate,
+    data, serverUrl, serverMethod, serverParams, csrfCookieName, csrfHeaderName, columns, sortable, searchable, paginate,
     selectable, perPage, perPageOptions, searchDebounceMs, stateSaveKey,
     rowId, rowClass, buttons, editorMode, editorFields,
     onSort, onFilter, onPageChange, onSelect, onRowClick, onEdit, onCellEdit, onCreate, onDelete,
@@ -108,18 +110,18 @@
 
   // svelte-ignore state_referenced_locally
 
-  let state = $state(store.getState());
+  let tableState = $state(store.getState());
 
   // Subscribe to store changes
   $effect(() => {
     return store.subscribe(() => {
-      state = store.getState();
+      tableState = store.getState();
 
       // Fire callbacks
-      if (onSort) onSort(state.sort);
-      if (onFilter) onFilter(state.filters);
+      if (onSort) onSort(tableState.sort);
+      if (onFilter) onFilter(tableState.filters);
       if (onSelect) onSelect(store.getSelectedRows());
-      if (onPageChange) onPageChange(state.pagination.page, state.pagination.perPage);
+      if (onPageChange) onPageChange(tableState.pagination.page, tableState.pagination.perPage);
     });
   });
 
@@ -144,12 +146,12 @@
 
   // Editor submit handler
   async function handleEditorSubmit(formData: Record<string, any>) {
-    const isCreate = state.editingRowId === null;
+    const isCreate = tableState.editingRowId === null;
     try {
       if (isCreate && onCreate) {
         await onCreate(formData);
       } else if (!isCreate && onEdit) {
-        const row = state.allRows.find((r) => store.getRowId(r) === state.editingRowId);
+        const row = tableState.allRows.find((r) => store.getRowId(r) === tableState.editingRowId);
         if (row) await onEdit(row, formData);
       }
       store.closeEditor();
@@ -160,6 +162,8 @@
     } catch (err: any) {
       if (err.errors) {
         store.setValidationErrors(err.errors);
+      } else {
+        store.setError(err.message ?? 'Failed to save row');
       }
     }
   }
@@ -199,8 +203,9 @@
     // Commit any pending edit first
     const result = store.commitCellEdit();
     if (result && onCellEdit) {
-      onCellEdit(result.row, result.columnKey, result.newValue, result.oldValue).catch(() => {
+      Promise.resolve().then(() => onCellEdit?.(result.row, result.columnKey, result.newValue, result.oldValue)).catch((err) => {
         (result.row as any)[result.columnKey] = result.oldValue;
+        store.setError(err.message ?? 'Failed to save cell');
       });
     }
 
@@ -266,13 +271,15 @@
     onDeleteClick={onDelete}
   />
 
-  {#if state.error}
-    <div class="sdt-error">
-      <span>{state.error}</span>
+  {#if tableState.error}
+    <div class="sdt-error {classNames.error ?? ''}" role="alert">
+      <span>{tableState.error}</span>
       <button type="button" onclick={() => store.setError(null)}>Dismiss</button>
     </div>
   {/if}
 
+  <!-- Keyboard users need access to the table's horizontal and vertical scroll area. -->
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
   <div
     bind:this={wrapperEl}
     class="{unstyled ? '' : 'sdt-table-wrapper'} {classNames.table ?? ''}"
@@ -280,6 +287,9 @@
     class:sdt-virtual-wrapper={virtualScroll}
     style:max-height={virtualScroll ? '500px' : undefined}
     onscroll={virtualScroll ? handleWrapperScroll : undefined}
+    role="region"
+    aria-label="Data table"
+    tabindex={responsive || virtualScroll ? 0 : undefined}
   >
     <table class="{unstyled ? '' : tableClasses}">
       <DataTableHead {columns} {store} {selectable} {sortable} {expandable} {classNames} />

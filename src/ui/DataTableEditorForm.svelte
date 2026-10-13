@@ -26,11 +26,11 @@
 </script>
 
 <form class="sdt-editor-form" onsubmit={handleSubmit}>
-  <div class="sdt-editor-fields">
+  <fieldset class="sdt-editor-fields" disabled={submitting} aria-label="Record fields">
     {#each fields as field}
       <DataTableEditorField {field} {store} />
     {/each}
-  </div>
+  </fieldset>
 
   <div class="sdt-editor-actions">
     <button type="button" class="sdt-btn sdt-btn-cancel" onclick={oncancel} disabled={submitting}>
@@ -55,6 +55,10 @@
   .sdt-editor-fields {
     display: flex;
     flex-direction: column;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    min-width: 0;
   }
   .sdt-editor-actions {
     display: flex;

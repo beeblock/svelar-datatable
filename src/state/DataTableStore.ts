@@ -3,7 +3,7 @@ import type { ColumnDef, DataTableConfig, DataTableState, FilterState, SortState
 type Listener = () => void;
 
 export class DataTableStore<T = any> {
-  private _state: DataTableState<T>;
+  protected _state: DataTableState<T>;
   private _listeners = new Set<Listener>();
   private _columns: ColumnDef<T>[] = [];
   private _rowIdFn: (row: T) => string | number;
@@ -65,11 +65,11 @@ export class DataTableStore<T = any> {
     return this._state;
   }
 
-  private _notify() {
+  protected _notify() {
     for (const listener of this._listeners) listener();
   }
 
-  private _saveState() {
+  protected _saveState() {
     if (!this._stateSaveKey) return;
     try {
       const toSave = {

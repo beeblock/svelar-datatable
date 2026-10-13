@@ -4,7 +4,8 @@ import { downloadBlob } from './csv.js';
 export async function exportExcel<T>(data: T[], columns: ColumnDef<T>[], filename: string = 'export.xlsx') {
   let ExcelJS: any;
   try {
-    ExcelJS = await import('exceljs');
+    const module = await import('exceljs');
+    ExcelJS = module.default ?? module;
   } catch {
     throw new Error('exceljs is required for Excel export. Install it: npm install exceljs');
   }

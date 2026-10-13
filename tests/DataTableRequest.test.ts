@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseDataTableRequest } from '../src/server/DataTableRequest.js';
+import { DataTableRequestError, parseDataTableRequest, parseDataTableRequestFromBody } from '../src/server/DataTableRequest.js';
 
 describe('parseDataTableRequest', () => {
   it('parses DataTables query params', () => {
@@ -82,5 +82,22 @@ describe('parseDataTableRequest', () => {
       role: 'admin',
       priority: 'urgent',
     });
+  });
+
+  it('bounds page sizes and rejects partial or unsafe integers', () => {
+    const request = parseDataTableRequest(new URLSearchParams({ draw: '3junk', start: '9007199254740992', length: '5000' }));
+    expect(request.draw).toBe(1);
+    expect(request.start).toBe(0);
+    expect(request.length).toBe(1000);
+  });
+
+  it('validates JSON requests using the same protocol shape', async () => {
+    const value = parseDataTableRequest(new URLSearchParams({ 'columns[0][data]': 'name' }));
+    const body = (data: unknown) => new Request('https://fixture.test', { method: 'POST', body: JSON.stringify(data) });
+    await expect(parseDataTableRequestFromBody(body(value))).resolves.toEqual(value);
+    await expect(parseDataTableRequestFromBody(body({ ...value, length: 1001 }))).rejects.toBeInstanceOf(DataTableRequestError);
+    await expect(parseDataTableRequestFromBody(body({ ...value, order: [{ column: 0, dir: 'DROP TABLE' }] }))).rejects.toBeInstanceOf(DataTableRequestError);
+    await expect(parseDataTableRequestFromBody(body(null))).rejects.toBeInstanceOf(DataTableRequestError);
+    await expect(parseDataTableRequestFromBody(new Request('https://fixture.test', { method: 'POST', body: '{' }))).rejects.toBeInstanceOf(DataTableRequestError);
   });
 });

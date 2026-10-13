@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { DataTableService } from '../src/server/DataTableService.js';
 import type { DataTableRequest } from '../src/types.js';
 import { Connection } from '@beeblock/svelar/database';
@@ -252,5 +252,69 @@ describe('DataTableService', () => {
     expect(response.data).toEqual([
       { id: 10, name: 'Meili redis', email: 'meili@example.com', role: 'admin' },
     ]);
+  });
+
+  it('honors server search allowlists for per-column searches, including an empty list', async () => {
+    const columns = request().columns.map((column) => ({ ...column, search: { value: column.data === 'role' ? 'admin' : '', regex: false } }));
+    for (const searchable of [['name'], []]) {
+      const response = await new DataTableService(model, { searchable, orderable: [] }).process(request({ columns, order: [{ column: 0, dir: 'desc' }] }));
+      expect(response.recordsFiltered).toBe(3);
+      expect(response.data.map((row: Row) => row.name)).toEqual(['Alice', 'Bob', 'Charlie']);
+    }
+  });
+
+  it('does not use prototype properties as registered custom filters', async () => {
+    const response = await new DataTableService(model).process(request({ customFilters: { toString: 'member', constructor: 'member' } }));
+    expect(response.recordsFiltered).toBe(3);
+    expect(response.error).toBeUndefined();
+  });
+
+  it('uses returned base queries and scopes rather than discarding their restrictions', async () => {
+    const response = await new DataTableService(model, {
+      baseQuery: () => new FakeQuery(rows).where('role', 'member'),
+      scopes: { bob: () => new FakeQuery(rows).where('name', 'Bob') },
+    }).applyScope('bob').process(request());
+    expect(response.recordsTotal).toBe(2);
+    expect(response.data.map((row: Row) => row.name)).toEqual(['Bob']);
+  });
+
+  it.each([
+    { baseQuery: (query: FakeQuery) => query.where('role', 'member') },
+    { filters: { role: (query: FakeQuery, value: string) => query.where('role', value) } },
+  ])('preserves database constraints when indexed search is automatic', async (options) => {
+    const search = vi.fn();
+    const response = await new DataTableService({ ...model, search }, options).process(request({ search: { value: 'Bob', regex: false }, customFilters: { role: 'member' } }));
+    expect(search).not.toHaveBeenCalled();
+    expect(response.data.map((row: Row) => row.name)).toEqual(['Bob']);
+  });
+
+  it.each([{ tenantScoped: true }, { softDeletes: true }, { globalScopes: () => new Map([['visible', () => {}]]) }])('does not bypass model visibility guards through indexed search', async (guard) => {
+    const search = vi.fn();
+    const response = await new DataTableService({ ...model, ...guard, search }).process(request({ search: { value: 'Bob', regex: false } }));
+    expect(search).not.toHaveBeenCalled();
+    expect(response.data.map((row: Row) => row.name)).toEqual(['Bob']);
+  });
+
+  it('fails closed for explicit indexed search with untranslatable database constraints', async () => {
+    const search = vi.fn();
+    const response = await new DataTableService({ ...model, tenantScoped: true, search }, { searchDriver: 'meilisearch' }).process(request({ search: { value: 'Bob', regex: false } }));
+    expect(search).not.toHaveBeenCalled();
+    expect(response.error).toBe('Unable to load table data.');
+    expect(response.data).toEqual([]);
+  });
+
+  it('falls back if an indexed filter mapping does not cover active filters', async () => {
+    const search = vi.fn();
+    const response = await new DataTableService({ ...model, search }, {
+      filters: { role: (query, value) => query.where('role', value) },
+      meilisearchFilter: () => undefined,
+    }).process(request({ search: { value: 'Bob', regex: false }, customFilters: { role: 'member' } }));
+    expect(search).not.toHaveBeenCalled();
+    expect(response.data.map((row: Row) => row.name)).toEqual(['Bob']);
+  });
+
+  it('does not expose storage exception details in a table response', async () => {
+    const response = await new DataTableService({ query: () => { throw new Error('postgres://private-credential'); } }).process(request());
+    expect(response.error).toBe('Unable to load table data.');
   });
 });

@@ -9,11 +9,11 @@
 
   let open = $state(false);
   // svelte-ignore state_referenced_locally
-  let state = $state(store.getState());
+  let tableState = $state(store.getState());
 
   $effect(() => {
     return store.subscribe(() => {
-      state = store.getState();
+      tableState = store.getState();
     });
   });
 
@@ -50,7 +50,7 @@
         <label class="sdt-col-toggle-item">
           <input
             type="checkbox"
-            checked={state.columnVisibility[col.key] !== false}
+            checked={tableState.columnVisibility[col.key] !== false}
             onchange={() => toggle(col.key)}
           />
           <span>{col.header}</span>

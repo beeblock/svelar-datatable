@@ -41,6 +41,8 @@
         class="sdt-editor-input {field.className ?? ''}"
         value={value}
         placeholder={field.placeholder}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `sdt-field-${field.name}-error` : undefined}
         disabled={field.disabled}
         required={field.required}
         oninput={(e) => handleChange((e.target as HTMLInputElement).value)}
@@ -51,6 +53,8 @@
         class="sdt-editor-input sdt-editor-textarea {field.className ?? ''}"
         value={value}
         placeholder={field.placeholder}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `sdt-field-${field.name}-error` : undefined}
         disabled={field.disabled}
         required={field.required}
         oninput={(e) => handleChange((e.target as HTMLTextAreaElement).value)}
@@ -61,6 +65,8 @@
         id="sdt-field-{field.name}"
         class="sdt-editor-input {field.className ?? ''}"
         value={value}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `sdt-field-${field.name}-error` : undefined}
         disabled={field.disabled}
         required={field.required}
         onchange={(e) => handleChange((e.target as HTMLSelectElement).value)}
@@ -75,6 +81,8 @@
         id="sdt-field-{field.name}"
         class="sdt-editor-input {field.className ?? ''}"
         multiple
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `sdt-field-${field.name}-error` : undefined}
         disabled={field.disabled}
         onchange={(e) => {
           const selected = Array.from((e.target as HTMLSelectElement).selectedOptions).map(o => o.value);
@@ -91,13 +99,15 @@
           id="sdt-field-{field.name}"
           type="checkbox"
           checked={!!value}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? `sdt-field-${field.name}-error` : undefined}
           disabled={field.disabled}
           onchange={(e) => handleChange((e.target as HTMLInputElement).checked)}
         />
         <span>{field.placeholder ?? field.label}</span>
       </label>
     {:else if field.type === 'radio'}
-      <div class="sdt-editor-radios">
+      <div class="sdt-editor-radios" role="radiogroup" aria-label={field.label} aria-invalid={error ? true : undefined} aria-describedby={error ? `sdt-field-${field.name}-error` : undefined}>
         {#each field.options ?? [] as opt}
           <label class="sdt-editor-radio">
             <input
@@ -119,7 +129,7 @@
     {/if}
 
     {#if error}
-      <span class="sdt-editor-error">{error}</span>
+      <span id="sdt-field-{field.name}-error" class="sdt-editor-error">{error}</span>
     {/if}
   </div>
 {/if}

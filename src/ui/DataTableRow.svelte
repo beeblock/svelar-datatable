@@ -43,20 +43,20 @@
 
   // svelte-ignore state_referenced_locally
 
-  let state = $state(store.getState());
+  let tableState = $state(store.getState());
   $effect(() => {
     return store.subscribe(() => {
-      state = store.getState();
+      tableState = store.getState();
     });
   });
 
   let rowId = $derived(store.getRowId(row));
-  let isSelected = $derived(state.selectedIds.has(rowId));
+  let isSelected = $derived(tableState.selectedIds.has(rowId));
   let expanded = $state(false);
 
   let visibleColumns = $derived(
-    state.columnOrder
-      .filter((key) => state.columnVisibility[key] !== false)
+    tableState.columnOrder
+      .filter((key) => tableState.columnVisibility[key] !== false)
       .map((key) => columns.find((c) => c.key === key))
       .filter(Boolean) as ColumnDef[]
   );
@@ -98,7 +98,7 @@
 
   // Report this row element as the bubble anchor when it becomes the editing row
   $effect(() => {
-    if (trEl && state.editingRowId === rowId && state.editorMode === 'bubble') {
+    if (trEl && tableState.editingRowId === rowId && tableState.editorMode === 'bubble') {
       onBubbleAnchor?.(trEl);
     }
   });
